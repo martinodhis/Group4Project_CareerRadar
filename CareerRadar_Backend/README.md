@@ -50,8 +50,9 @@ CareerRadar's Phase 1 was a React job explorer that called the Jobicy API direct
 | `POST` | `/applications` | Yes | Track an application for a local job |
 | `PUT`, `PATCH` | `/applications/<id>` | Yes | Update an application |
 | `DELETE` | `/applications/<id>` | Yes | Remove an application |
-| `GET` | `/jobs` | No | Search and filter jobs |
-| `GET` | `/jobs/<id>` | No | Get one job in full |
+| `GET` | `/jobs` | Yes | Search and filter jobs |
+| `GET` | `/jobs/search` | Yes | Search jobs by keyword |
+| `GET` | `/jobs/<id>` | Yes | Get one job in full |
 | `POST` | `/jobs` | Admin | Create a job |
 | `PUT`, `PATCH` | `/jobs/<id>` | Admin | Update a job |
 | `DELETE` | `/jobs/<id>` | Admin | Delete a job |
@@ -83,8 +84,9 @@ Errors are returned as JSON. For example:
 ```
 
 Use `http://127.0.0.1:5000` as the Postman base URL (there is no `/api`
-prefix). Public `GET /jobs` and `GET /skills` requests need no token. To use
-protected routes, register with `POST /register`, log in with `POST /login`,
+prefix). `GET /skills` requests need no token. Browse and view jobs only after
+registering and logging in. To use protected routes, register with
+`POST /register`, log in with `POST /login`,
 then set the returned `access_token` as a **Bearer Token** in Postman. Mutating
 jobs, skills, and the `/users` collection requires an administrator account.
 Register and sign in to the account that should administer the system, then use
@@ -115,10 +117,11 @@ curl "http://127.0.0.1:5000/"
 The response contains a `message` and an `endpoints` array. Each endpoint
 includes its HTTP `method` and URL `path`.
 
-Example public request:
+Example authenticated job search:
 
 ```bash
-curl "http://127.0.0.1:5000/jobs?limit=5"
+curl -H "Authorization: Bearer <access-token>" \
+  "http://127.0.0.1:5000/jobs?limit=5"
 ```
 
 Example authenticated dashboard request:

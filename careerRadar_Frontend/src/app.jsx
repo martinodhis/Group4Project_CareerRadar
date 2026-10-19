@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { Link } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { useAuth } from './hooks/UseAuth';
@@ -16,6 +16,7 @@ import "./styles/global.css";
 
 function ProtectedRoute({ children, adminOnly = false }) {
     const { user, loading, sessionError } = useAuth();
+    const location = useLocation();
     if (loading) return <main className="page-state">Checking your session…</main>;
     if (sessionError) {
         return (
@@ -25,7 +26,18 @@ function ProtectedRoute({ children, adminOnly = false }) {
             </main>
         );
     }
-    if (!user) return <Navigate to="/login" replace />;
+    if (!user) {
+        return (
+            <Navigate
+                to="/register"
+                replace
+                state={{
+                    message: "Create an account or sign in to browse job opportunities.",
+                    returnTo: { path: `${location.pathname}${location.search}` },
+                }}
+            />
+        );
+    }
     if (adminOnly && user.role?.toUpperCase() !== 'ADMIN') {
         return (
             <main className="admin-access-page">
@@ -48,9 +60,9 @@ function AppRoutes() {
     return (
         <AuthProvider>
             <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/jobs" element={<Jobs />} />
-                <Route path="/jobs/:id" element={<JobDetails />} />
+                <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+                <Route path="/jobs" element={<ProtectedRoute><Jobs /></ProtectedRoute>} />
+                <Route path="/jobs/:id" element={<ProtectedRoute><JobDetails /></ProtectedRoute>} />
                 <Route path="/about" element={<About />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Login register />} />

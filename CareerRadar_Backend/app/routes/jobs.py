@@ -105,9 +105,9 @@ def _sync_public_jobs_if_needed(query, keyword=None):
 
 
 @jobs_bp.get("")
-@jwt_required(optional=True)
+@jwt_required()
 def list_jobs():
-    """Public: browse / filter jobs."""
+    """Browse and filter jobs for authenticated users."""
     params = JobQuerySchema().load(request.args.to_dict())
     query = _apply_filters(Job.query.filter_by(is_active=True), params)
     query = _sort(query, params["sort"])
@@ -148,9 +148,9 @@ def list_jobs():
 
 
 @jobs_bp.get("/search")
-@jwt_required(optional=True)
+@jwt_required()
 def search_jobs():
-    """Public: search jobs by keyword (?q=)."""
+    """Search jobs by keyword for authenticated users (?q=)."""
     q = (request.args.get("q") or "").strip()
     page = request.args.get("page", 1, type=int)
     limit = min(request.args.get("limit", 20, type=int), 100)
@@ -230,9 +230,9 @@ def sync_jobs():
 
 
 @jobs_bp.get("/<int:job_id>")
-@jwt_required(optional=True)
+@jwt_required()
 def get_job(job_id):
-    """Public: fetch a single job."""
+    """Fetch a single job for an authenticated user."""
     job = Job.query.get(job_id)
     if job is None:
         raise NotFoundError("The requested job could not be found.", code="JOB_NOT_FOUND")

@@ -62,8 +62,10 @@ class PostmanApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         return {"Authorization": f"Bearer {response.get_json()['data']['access_token']}"}
 
-    def test_public_reads_and_protected_writes(self):
-        self.assertEqual(self.client.get("/jobs").status_code, 200)
+    def test_job_reads_and_writes_require_authentication(self):
+        self.assertEqual(self.client.get("/jobs").status_code, 401)
+        self.assertEqual(self.client.get("/jobs/search?q=engineer").status_code, 401)
+        self.assertEqual(self.client.get("/jobs/1").status_code, 401)
         self.assertEqual(self.client.get("/skills").status_code, 200)
         self.assertEqual(self.client.get("/users").status_code, 401)
         self.assertEqual(
@@ -71,6 +73,9 @@ class PostmanApiTests(unittest.TestCase):
         )
         self.assertEqual(
             self.client.post("/skills", json={"name": "Python"}).status_code, 401
+        )
+        self.assertEqual(
+            self.client.get("/jobs", headers=self.admin_headers()).status_code, 200
         )
         preflight = self.client.options(
             "/applications",
@@ -170,8 +175,9 @@ class PostmanApiTests(unittest.TestCase):
         self.assertNotEqual(missing.exit_code, 0)
         self.assertIn("No account found", missing.output)
 
-    def test_public_jobs_auto_sync_empty_database_and_keyword_search(self):
+    def test_authenticated_jobs_auto_sync_empty_database_and_keyword_search(self):
         sync_calls = []
+        headers = self.admin_headers()
 
         def sync_jobs(count=None, tag=None, **kwargs):
             sync_calls.append({"count": count, "tag": tag})
@@ -188,14 +194,14 @@ class PostmanApiTests(unittest.TestCase):
             return {"fetched": 1, "created": 1, "updated": 0}
 
         with patch("app.routes.jobs.jobicy_service.sync", side_effect=sync_jobs):
-            home_response = self.client.get("/jobs?limit=20")
+            home_response = self.client.get("/jobs?limit=20", headers=headers)
             self.assertEqual(home_response.status_code, 200, home_response.get_json())
             self.assertEqual(
                 home_response.get_json()["data"]["jobs"][0]["title"],
                 "Backend Engineer",
             )
 
-            search_response = self.client.get("/jobs?keyword=Data&limit=20")
+            search_response = self.client.get("/jobs?keyword=Data&limit=20", headers=headers)
             self.assertEqual(search_response.status_code, 200, search_response.get_json())
             self.assertEqual(
                 [job["title"] for job in search_response.get_json()["data"]["jobs"]],
@@ -547,7 +553,7 @@ class PostmanApiTests(unittest.TestCase):
             summary = JobicyService().sync(count=1)
 
         self.assertEqual(summary["created"], 1)
-        job = self.client.get("/jobs/1").get_json()["data"]
+        job = self.client.get("/jobs/1", headers=self.admin_headers()).get_json()["data"]
         self.assertEqual(job["employment_type"], "Full-Time")
         self.assertEqual(job["industry"], "Technology, Data")
         self.assertEqual(job["experience_level"], "Mid-level")
