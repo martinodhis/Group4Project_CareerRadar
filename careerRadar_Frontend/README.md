@@ -64,6 +64,20 @@ In Google Cloud Console, add the frontend's local or deployed origin to the
 OAuth client's authorized JavaScript origins. Restart Vite after changing its
 `.env` file. Google sign-in cannot complete until both values match.
 
+## Deploying the frontend to Netlify
+
+The repository root `netlify.toml` configures Netlify to build the Vite app
+from `careerRadar_Frontend`, publish its `dist` directory, and route client-side
+paths such as `/login` and `/jobs` back to the app.
+
+The Flask API is a separate service and must be deployed to a public host that
+supports Flask. In Netlify, set `VITE_API_BASE_URL` to that backend's HTTPS
+base URL (for example, `https://api.example.com`) in **Site configuration >
+Environment variables**, then trigger a new deploy. The backend must allow
+requests from your Netlify site origin through CORS. Google login additionally
+needs `VITE_GOOGLE_CLIENT_ID` in Netlify and the matching `GOOGLE_CLIENT_ID` on
+the backend.
+
 ## Data source
 
 The app requests up to 20 remote jobs from `https://jobicy.com/api/v2/remote-jobs` and passes the search term as a tag. The public endpoint does not require an API key. Listings depend on the API and network being available.
