@@ -1,5 +1,4 @@
 import unittest
-from datetime import datetime, timezone
 from unittest.mock import Mock, patch
 
 import requests
@@ -24,6 +23,7 @@ class PostmanApiTests(unittest.TestCase):
             {
                 "SQLALCHEMY_DATABASE_URI": "sqlite://",
                 "TESTING": True,
+                "RATELIMIT_ENABLED": False,
                 "JWT_DECODE_LEEWAY": 86400,
             },
         )
@@ -32,12 +32,19 @@ class PostmanApiTests(unittest.TestCase):
         self.context.push()
         db.create_all()
         self.client = self.app.test_client()
-
     def tearDown(self):
         db.session.remove()
         db.drop_all()
         db.engine.dispose()
         self.context.pop()
+
+    def login_user(self, email, password=None):
+        response = self.client.post(
+            "/login",
+            json={"email": email, "password": password or self.password},
+        )
+        self.assertEqual(response.status_code, 200, response.get_json())
+        return response
 
     def admin_headers(self):
         response = self.client.post(
@@ -55,11 +62,7 @@ class PostmanApiTests(unittest.TestCase):
         user.role = "ADMIN"
         db.session.commit()
 
-        response = self.client.post(
-            "/login",
-            json={"email": "admin@example.com", "password": self.password},
-        )
-        self.assertEqual(response.status_code, 200)
+        response = self.login_user("admin@example.com")
         return {"Authorization": f"Bearer {response.get_json()['data']['access_token']}"}
 
     def test_job_reads_and_writes_require_authentication(self):
@@ -115,6 +118,40 @@ class PostmanApiTests(unittest.TestCase):
             ).count(),
             1,
         )
+
+    def test_password_login_issues_session_directly(self):
+        self.client.post(
+            "/register",
+            json={
+                "email": "password-login@example.com",
+                "first_name": "Password",
+                "last_name": "Login",
+                "password": self.password,
+            },
+        )
+        response = self.login_user("password-login@example.com")
+        self.assertIn("access_token", response.get_json()["data"])
+
+    def test_google_login_completes_session_directly(self):
+        self.app.config["GOOGLE_CLIENT_ID"] = "test-google-client-id"
+        google_response = Mock()
+        google_response.json.return_value = {
+            "aud": "test-google-client-id",
+            "iss": "https://accounts.google.com",
+            "email_verified": "true",
+            "email": "google@example.com",
+            "given_name": "Google",
+            "family_name": "User",
+        }
+        with patch("app.routes.auth.requests.get", return_value=google_response):
+            response = self.client.post(
+                "/google-login",
+                json={"credential": "google-id-token-for-tests"},
+            )
+
+        self.assertEqual(response.status_code, 200, response.get_json())
+        self.assertIn("access_token", response.get_json()["data"])
+        self.assertEqual(response.get_json()["data"]["user"]["email"], "google@example.com")
 
     def test_registration_rejects_weak_passwords(self):
         weak_passwords = (
@@ -235,10 +272,7 @@ class PostmanApiTests(unittest.TestCase):
             f"/users/{user_id}", headers=headers, json={"role": "ADMIN"}
         )
         self.assertEqual(promoted.status_code, 200, promoted.get_json())
-        promoted_login = self.client.post(
-            "/login",
-            json={"email": "new-user@example.com", "password": self.password},
-        )
+        promoted_login = self.login_user("new-user@example.com")
         promoted_headers = {
             "Authorization": f"Bearer {promoted_login.get_json()['data']['access_token']}"
         }
@@ -305,10 +339,7 @@ class PostmanApiTests(unittest.TestCase):
             },
         )
         self.assertEqual(register_response.status_code, 201)
-        login_response = self.client.post(
-            "/login",
-            json={"email": "candidate@example.com", "password": self.password},
-        )
+        login_response = self.login_user("candidate@example.com")
         user_headers = {
             "Authorization": f"Bearer {login_response.get_json()['data']['access_token']}"
         }
@@ -407,10 +438,7 @@ class PostmanApiTests(unittest.TestCase):
             },
         )
         self.assertEqual(response.status_code, 201, response.get_json())
-        login = self.client.post(
-            "/login",
-            json={"email": "profile-user@example.com", "password": self.password},
-        )
+        login = self.login_user("profile-user@example.com")
         self.assertEqual(login.status_code, 200)
         headers = {"Authorization": f"Bearer {login.get_json()['data']['access_token']}"}
 
@@ -482,10 +510,7 @@ class PostmanApiTests(unittest.TestCase):
         notification = Notification.query.filter_by(user_id=user.id).one()
         self.assertEqual(notification.kind, "job_alert")
         self.assertIn("Data Engineer", notification.message)
-        login = self.client.post(
-            "/login",
-            json={"email": "alerts-user@example.com", "password": self.password},
-        )
+        login = self.login_user("alerts-user@example.com")
         headers = {"Authorization": f"Bearer {login.get_json()['data']['access_token']}"}
         self.assertEqual(login.status_code, 200, login.get_json())
         missing_auth = self.client.post(

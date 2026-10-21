@@ -1,4 +1,5 @@
 from .user import User
+from .auth_challenge import AuthChallenge
 from .job import Job
 from .saved_job import SavedJob
 from .application import Application
@@ -14,6 +15,7 @@ from .skill import JobSkill, Skill, UserSkill, job_skills, user_skills
 
 __all__ = [
     "User",
+    "AuthChallenge",
     "Job",
     "SavedJob",
     "Application",

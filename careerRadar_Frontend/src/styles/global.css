@@ -251,11 +251,18 @@ main { width: 100%; }
 .admin-access-card .btn { margin-top: 20px; }
 .admin-filter { display: grid; gap: 6px; color: var(--muted); font-size: 11px; font-weight: 600; }
 .admin-filter select { min-height: 36px; padding: 0 10px; border: 1px solid var(--line); border-radius: 7px; color: var(--ink); background: #fff; }
-.auth-layout { min-height: 100vh; min-height: 100svh; display: grid; place-items: center; padding: 40px clamp(18px, 4vw, 64px); background: #e8ecec; }
-.auth-shell { width: min(1160px, 100%); min-height: min(680px, calc(100svh - 80px)); display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(0, .92fr); overflow: hidden; border: 1px solid rgba(255, 255, 255, .8); border-radius: 25px; background: #eef0f1; box-shadow: 0 24px 70px rgba(31, 49, 40, .16); }
-.auth-form-panel { display: flex; align-items: center; justify-content: center; padding: 48px clamp(32px, 6vw, 86px); background: #eef0f1; }
-.auth-form-content { width: min(390px, 100%); }
-.auth-brand { margin-bottom: 48px; }
+.auth-layout { min-height: 100vh; min-height: 100svh; display: grid; place-items: center; padding: 32px 18px; background: radial-gradient(ellipse at 50% 0%, #f5f8f1 0, transparent 48%), #e8ecec; }
+.auth-shell { width: min(1040px, 100%); min-height: 620px; display: grid; grid-template-columns: .9fr 1.1fr; overflow: hidden; border: 1px solid rgba(255, 255, 255, .85); border-radius: 18px; background: #fff; box-shadow: 0 20px 55px rgba(31, 49, 40, .14); }
+.auth-promo { display: flex; flex-direction: column; padding: 40px clamp(28px, 5vw, 58px); color: #f7f9f4; background: radial-gradient(ellipse at 15% 85%, rgba(185, 217, 138, .18), transparent 46%), linear-gradient(145deg, #263b30, #385944); }
+.auth-promo .brand { color: #fff; }
+.auth-promo .brand-accent { color: #d2e7b7; }
+.auth-promo .brand-dot { box-shadow: 0 0 0 5px rgba(240, 245, 233, .13); }
+.auth-promo-content { max-width: 370px; margin: auto 0; padding-block: 48px; }
+.auth-promo-label { color: #c8dfad; font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.auth-promo-content h2 { margin-top: 13px; color: #fff; font-family: 'Manrope', sans-serif; font-size: clamp(34px, 4.6vw, 52px); line-height: 1.1; letter-spacing: -.06em; }
+.auth-promo-description { max-width: 340px; margin-top: 17px; color: #d1ddd3; font-size: 14px; line-height: 1.8; }
+.auth-form-panel { display: flex; align-items: center; justify-content: center; padding: 42px clamp(28px, 5vw, 64px); background: #fff; }
+.auth-form-content { width: min(360px, 100%); }
 .auth-card { width: 100%; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
 .auth-card h1, .dashboard-heading h1 { margin-top: 8px; color: var(--ink); font-family: 'Manrope', sans-serif; font-size: clamp(30px, 4vw, 40px); letter-spacing: -.05em; }
 .auth-card h1 { font-size: clamp(25px, 3vw, 32px); letter-spacing: -.04em; }
@@ -267,22 +274,23 @@ main { width: 100%; }
 .password-requirements ul { display: grid; gap: 3px; margin: 5px 0 0; padding: 0; list-style: none; }
 .password-requirements li { color: #8a6252; }
 .password-requirements li.is-satisfied { color: var(--green-dark); }
-.auth-form input { width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid #dce1e2; border-radius: 6px; color: var(--ink); background: #fff; font-size: 13px; }
+.auth-form input, .auth-form select { width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid #dce1e2; border-radius: 6px; color: var(--ink); background: #fff; font-size: 13px; }
 .auth-form input:focus { border-color: #8bab77; }
+.auth-form select:focus { border-color: #8bab77; }
+.google-sign-in { display: grid; justify-items: center; gap: 8px; margin-top: 18px; }
+.google-sign-in .auth-description { margin-top: 0; }
+.google-sign-in > div { width: 100%; display: flex; justify-content: center; }
+.google-sign-in-unavailable { width: min(100%, 400px); min-height: 40px; border: 1px solid #dadce0; border-radius: 4px; color: #3c4043; background: #fff; font-size: 13px; font-weight: 600; opacity: .75; }
+.google-sign-in-note { max-width: 340px; color: var(--muted); font-size: 10px; line-height: 1.5; text-align: center; }
 .auth-name-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .auth-submit { width: 100%; min-height: 44px; margin-top: 3px; border-color: #18a45b; border-radius: 5px; color: #fff; background: #20b467; }
 .auth-submit:hover { border-color: #13884b; background: #189d59; }
 .auth-switch { margin-top: 20px; color: var(--muted); font-size: 11px; text-align: center; }
 .auth-switch a { color: var(--green-dark); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
-.auth-promo { position: relative; min-height: inherit; display: flex; flex-direction: column; overflow: hidden; padding: clamp(34px, 5vw, 64px); color: #fff; background-color: #169957; background-image: linear-gradient(135deg, rgba(35, 188, 112, .9), rgba(14, 143, 75, .94)), url("../assets/career-hero.svg"); background-position: center, center right; background-repeat: no-repeat; background-size: cover, auto 100%; }
-.auth-promo::after { position: absolute; inset: 0; background: linear-gradient(0deg, rgba(13, 105, 58, .18), transparent 70%); content: ""; pointer-events: none; }
-.auth-promo .brand { position: relative; z-index: 1; color: #fff; font-size: 15px; }
-.auth-promo .brand-dot { background: #dcf5e3; box-shadow: 0 0 0 4px rgba(255, 255, 255, .18); }
-.auth-promo .brand-accent { color: #e0f4dc; }
-.auth-promo-content { position: relative; z-index: 1; width: min(390px, 100%); margin: auto 0 13%; }
-.auth-promo-label { color: #d9f3df; font-size: 10px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
-.auth-promo h2 { max-width: 360px; margin-top: 10px; color: #fff; font-family: 'Manrope', sans-serif; font-size: clamp(30px, 4vw, 42px); line-height: 1.12; letter-spacing: -.05em; }
-.auth-promo-description { max-width: 370px; margin-top: 12px; color: #e5f4e9; font-size: 12px; line-height: 1.7; }
+.auth-success { min-height: 100vh; display: grid; align-content: center; justify-items: center; gap: 12px; padding: 24px; text-align: center; background: radial-gradient(ellipse at 50% 0%, #edf3e6 0, transparent 48%), var(--paper); }
+.auth-success-mark { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 50%; color: #3f6737; background: #e6f1dc; font-size: 24px; font-weight: 700; }
+.auth-success h1 { max-width: 540px; color: var(--ink); font-family: 'Manrope', sans-serif; font-size: clamp(25px, 4vw, 34px); letter-spacing: -.04em; }
+.auth-success p { color: var(--muted); font-size: 13px; }
 .profile-form { margin-top: 22px; padding: 22px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
 .profile-form .admin-section { margin-top: 0; }
 .profile-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15px; margin-bottom: 18px; }
@@ -331,16 +339,15 @@ main { width: 100%; }
   .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .admin-heading { align-items: flex-start; flex-direction: column; }
   .auth-layout { padding: 24px; }
-  .auth-shell { grid-template-columns: minmax(0, 1fr) minmax(0, .95fr); }
-  .auth-promo { padding: 34px; }
-  .auth-form-panel { padding: 34px; }
+  .auth-shell { width: min(560px, 100%); min-height: 0; grid-template-columns: 1fr; }
+  .auth-promo { min-height: 230px; padding: 28px clamp(24px, 7vw, 42px); }
+  .auth-promo-content { margin: 26px 0 0; padding-block: 0 10px; }
+  .auth-promo-content h2 { font-size: clamp(30px, 7vw, 42px); }
 }
 @media (max-width: 680px) {
-  .auth-layout { min-height: 100vh; min-height: 100svh; padding: 0; }
-  .auth-shell { width: 100%; min-height: 100vh; min-height: 100svh; grid-template-columns: 1fr; border: 0; border-radius: 0; box-shadow: none; }
-  .auth-promo { display: none; }
-  .auth-form-panel { min-height: 100vh; min-height: 100svh; padding: 32px 24px; }
-  .auth-form-content { width: min(420px, 100%); }
+  .auth-layout { padding: 20px 16px; }
+  .auth-promo { min-height: 205px; }
+  .auth-form-panel { padding: 30px 22px; }
 }
 @media (max-width: 580px) {
   .nav-links { flex-wrap: wrap; justify-content: flex-end; }

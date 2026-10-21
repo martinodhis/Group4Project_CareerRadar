@@ -1,16 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/UseAuth";
 import { getSafeExternalJobUrl } from "../services/JobApi";
 
 function Login({ register = false }) {
-    const { user, login, register: createAccount } = useAuth();
+    const { user, login, register: createAccount, googleLogin } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
     const [error, setError] = useState("");
     const [message, setMessage] = useState(location.state?.message || "");
     const [submitting, setSubmitting] = useState(false);
     const [password, setPassword] = useState("");
+    const [authSuccess, setAuthSuccess] = useState(false);
+    const authInProgress = useRef(false);
+    const googleCredentialHandler = useRef(null);
     const passwordRequirements = [
         { label: "At least 8 characters", satisfied: password.length >= 8 },
         { label: "A lowercase letter", satisfied: /[a-z]/.test(password) },
@@ -22,18 +25,90 @@ function Login({ register = false }) {
 
     useEffect(() => {
         if (!user) return;
+        if (authInProgress.current) return;
 
-        const applyUrl = getSafeExternalJobUrl(location.state?.returnTo?.applyUrl);
-        if (applyUrl) {
-            window.location.assign(applyUrl);
-            return;
+        const redirect = () => {
+            const applyUrl = getSafeExternalJobUrl(location.state?.returnTo?.applyUrl);
+            if (applyUrl) {
+                window.location.assign(applyUrl);
+                return;
+            }
+
+            const destination = location.state?.returnTo?.path || location.state?.from || (user.role?.toUpperCase() === "ADMIN" ? "/admin" : "/dashboard");
+            navigate(destination, { replace: true });
+        };
+
+        if (!authSuccess) {
+            redirect();
+            return undefined;
         }
 
-        const destination = location.state?.returnTo?.path || location.state?.from || (user.role?.toUpperCase() === "ADMIN" ? "/admin" : "/dashboard");
-        navigate(destination, { replace: true });
-    }, [user, navigate, location.state]);
+        const timeout = window.setTimeout(redirect, 1400);
+        return () => window.clearTimeout(timeout);
+    }, [user, authSuccess, navigate, location.state]);
 
-    if (user) return <main className="page-state">Redirecting…</main>;
+    useEffect(() => {
+        if (user) return undefined;
+
+        const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+        if (!clientId) return undefined;
+
+        let script;
+        const initializeGoogle = () => {
+            const button = document.getElementById("google-sign-in");
+            if (!button || !window.google?.accounts?.id) return;
+            window.google.accounts.id.initialize({
+                client_id: clientId,
+                callback: (response) => googleCredentialHandler.current?.(response.credential),
+            });
+            window.google.accounts.id.renderButton(button, {
+                theme: "outline",
+                size: "large",
+                width: Math.min(button.clientWidth, 400),
+            });
+        };
+        googleCredentialHandler.current = async (credential) => {
+            setError("");
+            setSubmitting(true);
+            authInProgress.current = true;
+            try {
+                await googleLogin(credential);
+                setMessage("You have successfully joined CareerRadar.");
+                setAuthSuccess(true);
+                authInProgress.current = false;
+            } catch (requestError) {
+                authInProgress.current = false;
+                setError(requestError.message);
+            } finally {
+                setSubmitting(false);
+            }
+        };
+
+        if (window.google?.accounts?.id) {
+            initializeGoogle();
+        } else {
+            script = document.createElement("script");
+            script.src = "https://accounts.google.com/gsi/client";
+            script.async = true;
+            script.onload = initializeGoogle;
+            script.onerror = () => setError("Google sign-in could not be loaded. Please try again.");
+            document.head.appendChild(script);
+        }
+        return () => {
+            googleCredentialHandler.current = null;
+            if (script?.parentNode) script.parentNode.removeChild(script);
+        };
+    }, [googleLogin, user]);
+
+    if (user) {
+        return (
+            <main className="auth-success" role="status">
+                <span className="auth-success-mark" aria-hidden="true">✓</span>
+                <h1>{authSuccess ? "You have successfully joined CareerRadar." : "You’re already signed in."}</h1>
+                <p>Taking you to your account…</p>
+            </main>
+        );
+    }
 
     const submit = async (event) => {
         event.preventDefault();
@@ -57,9 +132,14 @@ function Login({ register = false }) {
                     },
                 });
             } else {
+                authInProgress.current = true;
                 await login(fields.get("email"), fields.get("password"));
+                setMessage("You have successfully joined CareerRadar.");
+                setAuthSuccess(true);
+                authInProgress.current = false;
             }
         } catch (requestError) {
+            authInProgress.current = false;
             setError(requestError.message);
         } finally {
             setSubmitting(false);
@@ -136,6 +216,21 @@ function Login({ register = false }) {
                                     {submitting ? "Please wait…" : register ? "Create account" : "Sign in"}
                                 </button>
                             </form>
+                            <div className="google-sign-in">
+                                <p className="auth-description">Or continue with Google</p>
+                                {import.meta.env.VITE_GOOGLE_CLIENT_ID ? (
+                                    <div id="google-sign-in" />
+                                ) : (
+                                    <>
+                                        <button className="google-sign-in-unavailable" type="button" disabled>
+                                            Continue with Google
+                                        </button>
+                                        <p className="google-sign-in-note">
+                                            Google sign-in is not configured yet. Use your email and password for now.
+                                        </p>
+                                    </>
+                                )}
+                            </div>
                             <p className="auth-switch">
                                 {register ? "Already registered? " : "Don't have an account? "}
                                 <Link to={register ? "/login" : "/register"} state={location.state}>

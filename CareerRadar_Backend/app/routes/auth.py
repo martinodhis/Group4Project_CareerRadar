@@ -1,7 +1,8 @@
 """Authentication routes: register, login, me, logout, password reset."""
 from datetime import datetime, timezone
+import secrets
 
-from flask import Blueprint, request
+from flask import Blueprint, current_app, request
 from flask_jwt_extended import (
     create_access_token,
     create_refresh_token,
@@ -10,6 +11,7 @@ from flask_jwt_extended import (
 )
 from marshmallow import ValidationError as MarshmallowError
 from sqlalchemy.exc import IntegrityError
+import requests
 
 from ..extensions import db, jwt, limiter
 from ..models.user import User
@@ -17,6 +19,7 @@ from ..models.profile import Profile
 from ..models.user_activity import UserActivity
 from ..schemas import (
     ForgotPasswordSchema,
+    GoogleLoginSchema,
     LoginSchema,
     RegisterSchema,
     ResetPasswordSchema,
@@ -43,6 +46,24 @@ def _tokens_for(user):
     access = create_access_token(identity=str(user.id), additional_claims=claims)
     refresh = create_refresh_token(identity=str(user.id), additional_claims=claims)
     return access, refresh
+
+
+def _complete_login(user):
+    user.last_login = datetime.now(timezone.utc)
+    db.session.commit()
+    from ..services.activity_service import record_activity
+
+    record_activity(user, "LOGIN", request.path)
+    access, refresh = _tokens_for(user)
+    return success(
+        data={
+            "access_token": access,
+            "refresh_token": refresh,
+            "user": user.to_dict(),
+        },
+        message="Login successful",
+        access_token=access,
+    )
 
 
 @auth_bp.post("/register")
@@ -86,17 +107,13 @@ def register():
             code="USER_EXISTS",
         )
 
-    return success(
-        data={"user": user.to_dict()},
-        message="Account created successfully",
-        status_code=201,
-    )
+    return success(data={"user": user.to_dict()}, message="Account created successfully", status_code=201)
 
 
 @auth_bp.post("/login")
 @limiter.limit("20 per minute")
 def login():
-    """Authenticate and return JWT tokens."""
+    """Authenticate with an email address and password."""
     data = LoginSchema().load(request.get_json(silent=True) or {})
     user = User.query.filter_by(email=data["email"].lower()).first()
 
@@ -104,24 +121,62 @@ def login():
         raise UnauthorizedError("Invalid email or password.")
     if not user.is_active:
         raise ApiError("ACCOUNT_DISABLED", "This account has been deactivated.", 403)
+    return _complete_login(user)
 
-    access, refresh = _tokens_for(user)
-    user.last_login = datetime.now(timezone.utc)
-    db.session.commit()
-    from ..services.activity_service import record_activity
 
-    record_activity(user, "LOGIN", request.path)
+@auth_bp.post("/google-login")
+@limiter.limit("20 per minute")
+def google_login():
+    data = GoogleLoginSchema().load(request.get_json(silent=True) or {})
+    client_id = current_app.config.get("GOOGLE_CLIENT_ID")
+    if not client_id:
+        raise ApiError("GOOGLE_LOGIN_NOT_CONFIGURED", "Google sign-in is not configured.", 503)
 
-    return success(
-        data={
-            "access_token": access,
-            "refresh_token": refresh,
-            "user": user.to_dict(),
-        },
-        message="Login successful",
-        # Top-level access_token kept for spec compatibility.
-        access_token=access,
-    )
+    try:
+        response = requests.get(
+            "https://oauth2.googleapis.com/tokeninfo",
+            params={"id_token": data["credential"]},
+            timeout=10,
+        )
+        response.raise_for_status()
+        identity = response.json()
+    except (requests.RequestException, ValueError):
+        raise UnauthorizedError("Google sign-in could not be verified.")
+
+    if (
+        not isinstance(identity, dict)
+        or identity.get("aud") != client_id
+        or identity.get("iss") not in ("accounts.google.com", "https://accounts.google.com")
+        or identity.get("email_verified") != "true"
+        or not isinstance(identity.get("email"), str)
+    ):
+        raise UnauthorizedError("Google sign-in could not be verified.")
+
+    email = identity["email"].strip().lower()
+    if not email:
+        raise UnauthorizedError("Google sign-in could not be verified.")
+    user = User.query.filter_by(email=email).first()
+    if user is None:
+        first_name = identity.get("given_name") or email.split("@", 1)[0]
+        user = User(
+            username=User.username_for_email(email),
+            email=email,
+            first_name=first_name[:120],
+            last_name=(identity.get("family_name") or "")[:120],
+        )
+        user.set_password(secrets.token_urlsafe(32))
+        db.session.add(user)
+        db.session.flush()
+        db.session.add(Profile(user_id=user.id))
+        db.session.add(UserActivity(
+            user_id=user.id,
+            action="USER_REGISTERED",
+            endpoint=request.path,
+            details={"provider": "google"},
+        ))
+    if not user.is_active:
+        raise ApiError("ACCOUNT_DISABLED", "This account has been deactivated.", 403)
+    return _complete_login(user)
 
 
 @auth_bp.post("/refresh")

@@ -47,6 +47,10 @@ class LoginSchema(StrictSchema):
     password = fields.String(required=True, load_only=True)
 
 
+class GoogleLoginSchema(StrictSchema):
+    credential = fields.String(required=True, validate=validate.Length(min=20))
+
+
 class ForgotPasswordSchema(StrictSchema):
     email = fields.Email(required=True)
 
@@ -154,6 +158,7 @@ __all__ = [
     "EducationSchema",
     "ExperienceSchema",
     "ForgotPasswordSchema",
+    "GoogleLoginSchema",
     "JobAlertSchema",
     "JobQuerySchema",
     "LoginSchema",

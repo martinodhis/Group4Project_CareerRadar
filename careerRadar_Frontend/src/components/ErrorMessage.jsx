@@ -1,7 +1,7 @@
-import { SESSION_EXPIRED_MESSAGE } from "../services/Api";
+import { SESSION_EXPIRED_MESSAGE, TOKEN_NOT_YET_VALID_MESSAGE } from "../services/Api";
 
 export default function ErrorMessage({ message = "Something went wrong.", onRetry }) {
-  const sessionExpired = message === SESSION_EXPIRED_MESSAGE;
+  const refreshPage = message === SESSION_EXPIRED_MESSAGE || message === TOKEN_NOT_YET_VALID_MESSAGE;
 
   return (
     <div className="error-message card" role="alert">
@@ -14,9 +14,9 @@ export default function ErrorMessage({ message = "Something went wrong.", onRetr
         <button
           className="btn btn-ghost"
           type="button"
-          onClick={sessionExpired ? () => window.location.reload() : onRetry}
+          onClick={refreshPage ? () => window.location.reload() : onRetry}
         >
-          {sessionExpired ? "Refresh the page" : "Try again"}
+          {refreshPage ? "Refresh the page" : "Try again"}
         </button>
       )}
     </div>

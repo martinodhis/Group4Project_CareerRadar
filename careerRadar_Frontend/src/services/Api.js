@@ -2,6 +2,7 @@ const defaultApiHost = typeof window === 'undefined' ? '127.0.0.1' : window.loca
 export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || `http://${defaultApiHost}:5000`).replace(/\/+$/, '');
 export const ACCESS_TOKEN_KEY = 'careerradar:access-token';
 export const SESSION_EXPIRED_MESSAGE = 'Your session has expired. Refresh the page to continue.';
+export const TOKEN_NOT_YET_VALID_MESSAGE = 'Refresh the page to see the available jobs.';
 
 export class ApiError extends Error {
   constructor(message, status, code = null) {
@@ -57,6 +58,9 @@ export async function apiRequest(path, { method = 'GET', body, signal, requireAu
   }
   if (!response.ok || payload.success === false) {
     const message = payload.error?.message || payload.message || payload.msg || `Request failed (${response.status})`;
+    if ((response.status === 401 || response.status === 422) && /token.*not yet valid|not yet valid.*token|\biat\b/i.test(message)) {
+      throw new ApiError(TOKEN_NOT_YET_VALID_MESSAGE, response.status, 'TOKEN_NOT_YET_VALID');
+    }
     if ((response.status === 401 || response.status === 422) && /token.*expired|expired.*token/i.test(message)) {
       localStorage.removeItem(ACCESS_TOKEN_KEY);
       throw new ApiError(SESSION_EXPIRED_MESSAGE, response.status, 'TOKEN_EXPIRED');

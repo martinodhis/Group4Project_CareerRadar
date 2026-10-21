@@ -8,7 +8,7 @@ CareerRadar's Phase 1 was a React job explorer that called the Jobicy API direct
 
 ## Core Features
 
-- **User authentication:** sign up, log in, log out, and session check, with hashed passwords
+- **User authentication:** registration, password sign-in, direct Google sign-in, and logout
 - **Job search:** search and filter jobs through our own API, backed by Jobicy
 - **Saved jobs:** logged-in users can save, list, and remove jobs
 - **Application tracking:** logged-in users can track applications and update their pipeline status
@@ -34,7 +34,8 @@ CareerRadar's Phase 1 was a React job explorer that called the Jobicy API direct
 | `GET` | `/` | No | Return API status and registered endpoints as JSON |
 | `GET` | `/health` | No | Return API server status as JSON |
 | `POST` | `/register` | No | Create an account |
-| `POST` | `/login` | No | Start a session |
+| `POST` | `/login` | No | Sign in using email and password |
+| `POST` | `/google-login` | No | Verify a Google identity and sign in |
 | `POST` | `/logout` | Yes | End the session |
 | `GET` | `/me` | Yes | Return the current user |
 | `GET` | `/dashboard` | Yes | Return personal dashboard statistics |
@@ -85,12 +86,11 @@ Errors are returned as JSON. For example:
 
 Use `http://127.0.0.1:5000` as the Postman base URL (there is no `/api`
 prefix). `GET /skills` requests need no token. Browse and view jobs only after
-registering and logging in. To use protected routes, register with
-`POST /register`, log in with `POST /login`,
-then set the returned `access_token` as a **Bearer Token** in Postman. Mutating
-jobs, skills, and the `/users` collection requires an administrator account.
-Register and sign in to the account that should administer the system, then use
-the `promote-admin` command below to grant that account administrator access.
+registering and logging in, then use the issued access token for protected routes.
+Mutating jobs, skills, and the `/users` collection requires an administrator
+account. Register and sign in to the account that should administer the system,
+then use the `promote-admin` command below to grant that account administrator
+access.
 
 Register and log in using JSON bodies:
 
@@ -103,9 +103,21 @@ Register and log in using JSON bodies:
 }
 ```
 
-Send that body to `POST /register`, then send `email` and `password` to
-`POST /login`. Use the returned `data.access_token` as the Bearer token for
-authenticated requests.
+Send that body to `POST /register`, then sign in using `email` and `password` at
+`POST /login`. The response contains the access token for authenticated requests.
+Google sign-in uses the Google Identity Services button in the frontend. Set
+the same Google OAuth Web client ID in the backend and frontend environments:
+
+```text
+SECRET_KEY=generate-a-long-random-value
+JWT_SECRET_KEY=generate-a-different-long-random-value
+GOOGLE_CLIENT_ID=your-google-oauth-client-id
+```
+
+Set `VITE_GOOGLE_CLIENT_ID` to the same Google OAuth client ID in the frontend
+`.env` to display the Google sign-in button. Google validates the user directly;
+CareerRadar does not send any additional email or SMS code. Keep backend secrets
+unique and random in deployment; do not use development defaults.
 
 Request `/` to get the API status and a JSON list of registered methods and
 paths. For example:
@@ -236,7 +248,11 @@ python3 -m venv .venv
 
 This repository already includes the `migrations/` directory, so do not run
 `flask db init` again. Use `flask --app migration_app db upgrade` to apply the
-checked-in migrations to your database.
+checked-in migrations to your database. Run this upgrade after every code
+update that includes a new migration and before starting or restarting the API.
+The API model and database schema must be updated together; for example, an
+`UndefinedColumn` error naming `users.phone_number` means the authentication
+migration has not yet been applied to the database configured in `.env`.
 
 Use the `.venv/bin/` executables shown above so dependency installation and
 server startup use the same Python interpreter. This is especially important

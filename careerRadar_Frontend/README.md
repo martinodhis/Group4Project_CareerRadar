@@ -47,6 +47,23 @@ Open the local URL printed by Vite. To create a production build, run:
 npm run build
 ```
 
+## Google sign-in configuration
+
+Google sign-in requires a Google OAuth 2.0 Web client ID. Set the same client ID
+in `careerRadar_Frontend/.env` and `CareerRadar_Backend/.env`:
+
+```text
+# careerRadar_Frontend/.env
+VITE_GOOGLE_CLIENT_ID=your-google-oauth-client-id
+
+# CareerRadar_Backend/.env
+GOOGLE_CLIENT_ID=your-google-oauth-client-id
+```
+
+In Google Cloud Console, add the frontend's local or deployed origin to the
+OAuth client's authorized JavaScript origins. Restart Vite after changing its
+`.env` file. Google sign-in cannot complete until both values match.
+
 ## Data source
 
 The app requests up to 20 remote jobs from `https://jobicy.com/api/v2/remote-jobs` and passes the search term as a tag. The public endpoint does not require an API key. Listings depend on the API and network being available.

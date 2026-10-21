@@ -48,6 +48,13 @@ export function AuthProvider({ children }) {
       setSessionError('');
       return response.data.user;
     },
+    async googleLogin(credential) {
+      const response = await apiPost('/google-login', { credential });
+      localStorage.setItem(ACCESS_TOKEN_KEY, response.data.access_token);
+      setUser(response.data.user);
+      setSessionError('');
+      return response.data.user;
+    },
     async register(account) {
       return apiPost('/register', account);
     },
