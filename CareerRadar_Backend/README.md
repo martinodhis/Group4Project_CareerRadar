@@ -253,6 +253,10 @@ update that includes a new migration and before starting or restarting the API.
 The API model and database schema must be updated together; for example, an
 `UndefinedColumn` error naming `users.phone_number` means the authentication
 migration has not yet been applied to the database configured in `.env`.
+For Render, set `DATABASE_URL` to the PostgreSQL connection URL attached to the
+service, then run `flask --app migration_app db upgrade` from the backend
+directory before serving requests. The application also supports `DATABASE_URI`,
+which takes precedence when both variables are set.
 
 Use the `.venv/bin/` executables shown above so dependency installation and
 server startup use the same Python interpreter. This is especially important

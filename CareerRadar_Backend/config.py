@@ -4,14 +4,19 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+database_uri = (
+    os.getenv("DATABASE_URI")
+    or os.getenv("DATABASE_URL")
+    or "postgresql://localhost/careerradar"
+)
+if database_uri.startswith("postgres://"):
+    database_uri = database_uri.replace("postgres://", "postgresql://", 1)
+
 
 class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-change-me")
 
-    SQLALCHEMY_DATABASE_URI = os.getenv(
-        "DATABASE_URI",
-        "postgresql://localhost/careerradar",
-    )
+    SQLALCHEMY_DATABASE_URI = database_uri
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
