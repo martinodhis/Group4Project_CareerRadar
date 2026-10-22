@@ -254,9 +254,41 @@ The API model and database schema must be updated together; for example, an
 `UndefinedColumn` error naming `users.phone_number` means the authentication
 migration has not yet been applied to the database configured in `.env`.
 For Render, set `DATABASE_URL` to the PostgreSQL connection URL attached to the
-service, then run `flask --app migration_app db upgrade` from the backend
-directory before serving requests. The application also supports `DATABASE_URI`,
-which takes precedence when both variables are set.
+service. The application also supports `DATABASE_URI`, which takes precedence
+when both variables are set.
+
+### Deploying the backend to Render
+
+Configure the Render web service with these values:
+
+| Setting | Value |
+| --- | --- |
+| Root Directory | `CareerRadar_Backend` |
+| Build Command | `pip install -r requirements.txt` |
+| Start Command | `sh start.sh` |
+
+Add `DATABASE_URL` using the **Internal Database URL** from the PostgreSQL
+database attached to this Render service (the database and web service should
+be in the same region). Also set unique, randomly generated `SECRET_KEY` and
+`JWT_SECRET_KEY` environment variables; do not use the development defaults.
+Remove any stale `DATABASE_URI` setting: when both database variables are set,
+the application uses `DATABASE_URI` instead of `DATABASE_URL`.
+Keep Render's automatic deploy on push enabled for the branch connected to the
+GitHub repository.
+
+`start.sh` runs `python -m flask --app migration_app db upgrade` before launching
+Gunicorn. This applies checked-in migrations during each deploy or restart, so
+the account tables and columns are present before `/register` or `/login`
+receives requests. If the migration fails, Render will show the migration
+error in the deploy logs and will not start the API against an out-of-date
+schema. Do not use this startup migration against an existing database whose
+schema was created manually and is not tracked by Alembic; first verify its
+schema and migration version to avoid applying an incompatible migration.
+
+After saving these settings, trigger a manual deploy once. Subsequent pushes
+to the connected GitHub branch will deploy automatically. Confirm the deploy
+logs show the migration command completing before Gunicorn
+starts, then check `https://<your-render-service>.onrender.com/health`.
 
 Use the `.venv/bin/` executables shown above so dependency installation and
 server startup use the same Python interpreter. This is especially important
