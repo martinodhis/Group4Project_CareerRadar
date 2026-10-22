@@ -78,6 +78,11 @@ requests from your Netlify site origin through CORS. Google login additionally
 needs `VITE_GOOGLE_CLIENT_ID` in Netlify and the matching `GOOGLE_CLIENT_ID` on
 the backend.
 
+Do not set `VITE_API_BASE_URL` to the Netlify site URL: Netlify serves the
+frontend, not this Flask API. Without a backend URL, production requests show
+an API configuration error instead of attempting to connect to port `5000` on
+the frontend host. Local development still defaults to `http://localhost:5000`.
+
 ## Data source
 
 The app requests up to 20 remote jobs from `https://jobicy.com/api/v2/remote-jobs` and passes the search term as a tag. The public endpoint does not require an API key. Listings depend on the API and network being available.

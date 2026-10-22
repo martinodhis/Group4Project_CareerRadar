@@ -1,5 +1,8 @@
 const defaultApiHost = typeof window === 'undefined' ? '127.0.0.1' : window.location.hostname;
-export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || `http://${defaultApiHost}:5000`).replace(/\/+$/, '');
+const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
+export const API_BASE_URL = (
+  configuredApiBaseUrl || (import.meta.env.PROD ? '' : `http://${defaultApiHost}:5000`)
+).replace(/\/+$/, '');
 export const ACCESS_TOKEN_KEY = 'careerradar:access-token';
 export const SESSION_EXPIRED_MESSAGE = 'Your session has expired. Refresh the page to continue.';
 export const TOKEN_NOT_YET_VALID_MESSAGE = 'Refresh the page to see the available jobs.';
@@ -14,6 +17,14 @@ export class ApiError extends Error {
 }
 
 export async function apiRequest(path, { method = 'GET', body, signal, requireAuth = false } = {}) {
+  if (!API_BASE_URL) {
+    throw new ApiError(
+      'CareerRadar API is not configured for this deployment. Set VITE_API_BASE_URL in Netlify to your deployed backend HTTPS URL, then redeploy.',
+      0,
+      'API_NOT_CONFIGURED',
+    );
+  }
+
   const headers = {};
   const token = localStorage.getItem(ACCESS_TOKEN_KEY);
   if (requireAuth && !token) {
