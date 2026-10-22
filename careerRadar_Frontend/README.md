@@ -70,13 +70,13 @@ The repository root `netlify.toml` configures Netlify to build the Vite app
 from `careerRadar_Frontend`, publish its `dist` directory, and route client-side
 paths such as `/login` and `/jobs` back to the app.
 
-The Flask API is a separate service and must be deployed to a public host that
-supports Flask. In Netlify, set `VITE_API_BASE_URL` to that backend's HTTPS
-base URL (for example, `https://api.example.com`) in **Site configuration >
-Environment variables**, then trigger a new deploy. The backend must allow
-requests from your Netlify site origin through CORS. Google login additionally
-needs `VITE_GOOGLE_CLIENT_ID` in Netlify and the matching `GOOGLE_CLIENT_ID` on
-the backend.
+The Flask API is deployed separately on Render. The repository's root
+`netlify.toml` sets `VITE_API_BASE_URL` to
+`https://group4project-careerradar-1.onrender.com` for Netlify builds. If you
+change the backend URL, update that value and trigger a new deploy. The backend
+must allow requests from your Netlify site origin through CORS. Google login
+additionally needs `VITE_GOOGLE_CLIENT_ID` in Netlify and the matching
+`GOOGLE_CLIENT_ID` on the backend.
 
 Do not set `VITE_API_BASE_URL` to the Netlify site URL: Netlify serves the
 frontend, not this Flask API. Without a backend URL, production requests show
