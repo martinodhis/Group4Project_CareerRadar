@@ -129,6 +129,10 @@ main { width: 100%; }
 .filter-field select:focus-visible { border-color: #a9c497; }
 .filters-meta { margin-top: 15px; padding-top: 13px; border-top: 1px solid #eef0eb; color: #78877a; font-size: 11px; }
 .results-header { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 18px; }
+.job-pagination { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: -3px 0 16px; color: var(--muted); font-size: 12px; }
+.job-pagination > div { display: flex; gap: 8px; }
+.job-pagination .btn { min-height: 36px; }
+.job-pagination .btn:disabled { cursor: not-allowed; opacity: .55; }
 .results .job-list { grid-template-columns: 1fr; gap: 11px; }
 .results .job-card { padding: 18px; }
 
@@ -195,6 +199,7 @@ main { width: 100%; }
   .filters-row .filter-field:first-child { grid-column: 1 / -1; }
   .filters-row .btn { min-height: 40px; }
   .results-header { align-items: flex-start; }
+  .job-pagination { align-items: flex-start; flex-direction: column; }
   .job-header, .about-introduction { width: calc(100% - 36px); margin-top: 26px; padding: 26px 21px; }
   .job-information, .job-description, .job-requirements, .job-application, .about-problem, .about-users, .about-features { width: calc(100% - 36px); }
   .job-information { grid-template-columns: 1fr; }

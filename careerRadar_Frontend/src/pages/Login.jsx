@@ -3,6 +3,8 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/UseAuth";
 import { getSafeExternalJobUrl } from "../services/JobApi";
 
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "895009942803-l2aijkrsi4or2nak9dmoea9mn06crm56.apps.googleusercontent.com";
+
 function Login({ register = false }) {
     const { user, login, register: createAccount, googleLogin } = useAuth();
     const location = useLocation();
@@ -50,15 +52,12 @@ function Login({ register = false }) {
     useEffect(() => {
         if (user) return undefined;
 
-        const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-        if (!clientId) return undefined;
-
         let script;
         const initializeGoogle = () => {
             const button = document.getElementById("google-sign-in");
             if (!button || !window.google?.accounts?.id) return;
             window.google.accounts.id.initialize({
-                client_id: clientId,
+                client_id: GOOGLE_CLIENT_ID,
                 callback: (response) => googleCredentialHandler.current?.(response.credential),
             });
             window.google.accounts.id.renderButton(button, {
@@ -218,18 +217,7 @@ function Login({ register = false }) {
                             </form>
                             <div className="google-sign-in">
                                 <p className="auth-description">Or continue with Google</p>
-                                {import.meta.env.VITE_GOOGLE_CLIENT_ID ? (
-                                    <div id="google-sign-in" />
-                                ) : (
-                                    <>
-                                        <button className="google-sign-in-unavailable" type="button" disabled>
-                                            Continue with Google
-                                        </button>
-                                        <p className="google-sign-in-note">
-                                            Google sign-in is not configured yet. Use your email and password for now.
-                                        </p>
-                                    </>
-                                )}
+                                <div id="google-sign-in" />
                             </div>
                             <p className="auth-switch">
                                 {register ? "Already registered? " : "Don't have an account? "}

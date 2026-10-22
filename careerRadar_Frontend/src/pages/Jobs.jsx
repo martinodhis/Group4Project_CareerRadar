@@ -12,6 +12,8 @@ function Jobs() {
     const { jobs, loading, error, setSearchTerm, refetch } = useJobs();
     const { savedJobIds, toggleSavedJob, savedJobsError } = useSavedJobs();
     const [filters, setFilters] = useState({ industry: "all", level: "all", jobType: "all" });
+    const [page, setPage] = useState(1);
+    const pageSize = 6;
     const options = useMemo(() => ({
         industries: [...new Set(jobs.flatMap((job) => job.industry || []))],
         levels: [...new Set(jobs.map((job) => job.level).filter(Boolean))],
@@ -22,8 +24,21 @@ function Jobs() {
         (filters.level === "all" || job.level === filters.level) &&
         (filters.jobType === "all" || (job.jobTypes || []).includes(filters.jobType))
     );
-    const handleFilterChange = (name, value) => setFilters((current) => ({ ...current, [name]: value }));
-    const resetFilters = () => setFilters({ industry: "all", level: "all", jobType: "all" });
+    const pageCount = Math.ceil(visibleJobs.length / pageSize);
+    const currentPage = Math.min(page, Math.max(pageCount, 1));
+    const pageJobs = visibleJobs.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+    const handleSearch = (query) => {
+        setPage(1);
+        setSearchTerm(query);
+    };
+    const handleFilterChange = (name, value) => {
+        setPage(1);
+        setFilters((current) => ({ ...current, [name]: value }));
+    };
+    const resetFilters = () => {
+        setPage(1);
+        setFilters({ industry: "all", level: "all", jobType: "all" });
+    };
 
     return (
         <>
@@ -34,7 +49,7 @@ function Jobs() {
                 <section className="job-search">
                     <h1>Find Jobs</h1>
 
-                    <Searchbar onSearch={setSearchTerm} />
+                    <Searchbar onSearch={handleSearch} />
                 </section>
 
                 {/* Search Results */}
@@ -57,6 +72,32 @@ function Jobs() {
                             <h2>Job Opportunities</h2>
                         </div>
                         {savedJobsError && <p className="inline-error" role="alert">{savedJobsError}</p>}
+                        {!error && !loading && pageCount > 1 && (
+                            <nav className="job-pagination" aria-label="Job listings pagination">
+                                <span>
+                                    Showing {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, visibleJobs.length)} of {visibleJobs.length} jobs
+                                    <span className="job-pagination-page"> · Page {currentPage} of {pageCount}</span>
+                                </span>
+                                <div>
+                                    <button
+                                        className="btn btn-ghost"
+                                        type="button"
+                                        disabled={currentPage === 1}
+                                        onClick={() => setPage(Math.max(1, currentPage - 1))}
+                                    >
+                                        Previous
+                                    </button>
+                                    <button
+                                        className="btn btn-ghost"
+                                        type="button"
+                                        disabled={currentPage === pageCount}
+                                        onClick={() => setPage(Math.min(pageCount, currentPage + 1))}
+                                    >
+                                        Next
+                                    </button>
+                                </div>
+                            </nav>
+                        )}
 
                         {error ? (
                             <ErrorMessage message={error} onRetry={refetch} />
@@ -66,7 +107,7 @@ function Jobs() {
                             </div>
                         ) : visibleJobs.length ? (
                             <div className="job-list">
-                                {visibleJobs.map((job) => (
+                                {pageJobs.map((job) => (
                                     <Jobcard
                                         job={job}
                                         key={job.id}

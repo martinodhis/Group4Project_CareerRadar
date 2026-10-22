@@ -49,20 +49,25 @@ npm run build
 
 ## Google sign-in configuration
 
-Google sign-in requires a Google OAuth 2.0 Web client ID. Set the same client ID
-in `careerRadar_Frontend/.env` and `CareerRadar_Backend/.env`:
+Google sign-in uses the configured public web client ID by default. You can
+override it in `careerRadar_Frontend/.env`:
 
 ```text
 # careerRadar_Frontend/.env
 VITE_GOOGLE_CLIENT_ID=your-google-oauth-client-id
+```
 
+The backend must be configured with the same client ID in
+`CareerRadar_Backend/.env`:
+
+```text
 # CareerRadar_Backend/.env
 GOOGLE_CLIENT_ID=your-google-oauth-client-id
 ```
 
 In Google Cloud Console, add the frontend's local or deployed origin to the
 OAuth client's authorized JavaScript origins. Restart Vite after changing its
-`.env` file. Google sign-in cannot complete until both values match.
+`.env` file. Google sign-in cannot complete until the backend value matches.
 
 ## Deploying the frontend to Netlify
 
