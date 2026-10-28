@@ -38,9 +38,11 @@ def update_alert(alert_id):
     alert = JobAlert.query.filter_by(id=alert_id, user_id=user.id).first()
     if alert is None:
         raise NotFoundError("Alert not found.", code="ALERT_NOT_FOUND")
-    payload = JobAlertSchema(partial=True).load(request.get_json(silent=True) or {})
+    input_payload = request.get_json(silent=True) or {}
+    payload = JobAlertSchema(partial=True).load(input_payload)
     for key, value in payload.items():
-        setattr(alert, key, value)
+        if key in input_payload:
+            setattr(alert, key, value)
     db.session.commit()
     return success(data=alert.to_dict(), message="Alert updated")
 

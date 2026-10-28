@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 import unittest
 from unittest.mock import Mock, patch
 
@@ -453,11 +454,84 @@ class PostmanApiTests(unittest.TestCase):
             json={
                 "headline": "Junior analyst",
                 "location": "Nairobi",
+                "current_job_title": "Data Analyst",
+                "career_level": "Junior",
                 "years_of_experience": 1.5,
             },
         )
         self.assertEqual(update_response.status_code, 200, update_response.get_json())
         self.assertEqual(update_response.get_json()["data"]["headline"], "Junior analyst")
+        self.assertEqual(update_response.get_json()["data"]["profile_completion"], 50)
+
+        skill_ids = []
+        for skill_name in ("Python", "SQL", "Reporting"):
+            skill_response = self.client.post(
+                "/profile/skills",
+                headers=headers,
+                json={"name": skill_name},
+            )
+            self.assertEqual(skill_response.status_code, 201, skill_response.get_json())
+            skill_ids.append(skill_response.get_json()["data"]["skill_id"])
+        education_response = self.client.post(
+            "/profile/education",
+            headers=headers,
+            json={"institution": "CareerRadar University"},
+        )
+        self.assertEqual(education_response.status_code, 201, education_response.get_json())
+        experience_response = self.client.post(
+            "/profile/experience",
+            headers=headers,
+            json={"job_title": "Analyst", "company_name": "CareerRadar"},
+        )
+        self.assertEqual(experience_response.status_code, 201, experience_response.get_json())
+        goal_response = self.client.post(
+            "/career/goals",
+            headers=headers,
+            json={"target_title": "Senior Analyst"},
+        )
+        self.assertEqual(goal_response.status_code, 201, goal_response.get_json())
+
+        profile_response = self.client.get("/profile", headers=headers)
+        self.assertEqual(profile_response.get_json()["data"]["profile_completion"], 100)
+        self.assertEqual(
+            self.client.delete(
+                f"/profile/education/{education_response.get_json()['data']['id']}",
+                headers=headers,
+            ).status_code,
+            200,
+        )
+        profile_response = self.client.get("/profile", headers=headers)
+        self.assertEqual(profile_response.get_json()["data"]["profile_completion"], 87)
+        self.assertEqual(
+            self.client.delete(
+                f"/profile/experience/{experience_response.get_json()['data']['id']}",
+                headers=headers,
+            ).status_code,
+            200,
+        )
+        self.assertEqual(
+            self.client.get("/profile", headers=headers).get_json()["data"]["profile_completion"],
+            75,
+        )
+        self.assertEqual(
+            self.client.delete(
+                f"/career/goals/{goal_response.get_json()['data']['id']}",
+                headers=headers,
+            ).status_code,
+            200,
+        )
+        self.assertEqual(
+            self.client.get("/profile", headers=headers).get_json()["data"]["profile_completion"],
+            62,
+        )
+        self.assertEqual(
+            self.client.delete(f"/profile/skills/{skill_ids[0]}", headers=headers).status_code,
+            200,
+        )
+        self.assertEqual(
+            self.client.get("/profile", headers=headers).get_json()["data"]["profile_completion"],
+            50,
+        )
 
         account_response = self.client.patch(
             "/users/me",
@@ -520,9 +594,23 @@ class PostmanApiTests(unittest.TestCase):
         created_alert = self.client.post(
             "/alerts",
             headers=headers,
-            json={"keyword": "product designer"},
+            json={
+                "keyword": "product designer",
+                "location": "Nairobi",
+                "job_type": "Full-time",
+            },
         )
         self.assertEqual(created_alert.status_code, 201, created_alert.get_json())
+        alert_id = created_alert.get_json()["data"]["id"]
+        paused_alert = self.client.put(
+            f"/alerts/{alert_id}",
+            headers=headers,
+            json={"is_active": False},
+        )
+        self.assertEqual(paused_alert.status_code, 200, paused_alert.get_json())
+        self.assertFalse(paused_alert.get_json()["data"]["is_active"])
+        self.assertEqual(paused_alert.get_json()["data"]["location"], "Nairobi")
+        self.assertEqual(paused_alert.get_json()["data"]["job_type"], "Full-time")
         notifications = self.client.get("/notifications", headers=headers)
         self.assertEqual(notifications.status_code, 200)
         self.assertEqual(len(notifications.get_json()["data"]["notifications"]), 1)
@@ -531,6 +619,30 @@ class PostmanApiTests(unittest.TestCase):
         )
         self.assertEqual(mark_read.status_code, 200, mark_read.get_json())
         self.assertTrue(mark_read.get_json()["data"]["is_read"])
+        deleted_alert = self.client.delete(f"/alerts/{alert_id}", headers=headers)
+        self.assertEqual(deleted_alert.status_code, 200, deleted_alert.get_json())
+
+    def test_manually_created_job_notifies_matching_active_alerts(self):
+        headers = self.admin_headers()
+        user = User.query.filter_by(email="admin@example.com").one()
+        db.session.add(
+            JobAlert(user_id=user.id, keyword="product designer", location="Remote")
+        )
+        db.session.commit()
+
+        response = self.client.post(
+            "/jobs",
+            headers=headers,
+            json={
+                "title": "Product Designer",
+                "company_name": "CareerRadar",
+                "location": "Remote",
+            },
+        )
+        self.assertEqual(response.status_code, 201, response.get_json())
+        notification = Notification.query.filter_by(user_id=user.id).one()
+        self.assertEqual(notification.kind, "job_alert")
+        self.assertEqual(notification.job_id, response.get_json()["data"]["id"])
 
     def test_admin_job_sync_validates_input_and_reports_upstream_errors(self):
         headers = self.admin_headers()
@@ -553,6 +665,23 @@ class PostmanApiTests(unittest.TestCase):
         self.assertEqual(
             failure_response.get_json()["error"]["code"], "JOB_SYNC_FAILED"
         )
+
+    def test_public_job_browsing_survives_and_throttles_upstream_sync_failures(self):
+        headers = self.admin_headers()
+
+        with patch("app.routes.jobs._automatic_sync_retry_after", 0):
+            with patch(
+                "app.routes.jobs.jobicy_service.sync",
+                side_effect=requests.ConnectionError("upstream unavailable"),
+            ) as sync:
+                first_response = self.client.get("/jobs", headers=headers)
+                second_response = self.client.get("/jobs", headers=headers)
+
+        self.assertEqual(first_response.status_code, 200, first_response.get_json())
+        self.assertEqual(second_response.status_code, 200, second_response.get_json())
+        self.assertEqual(first_response.get_json()["data"]["jobs"], [])
+        self.assertEqual(second_response.get_json()["data"]["jobs"], [])
+        sync.assert_called_once()
 
     def test_jobicy_sync_maps_external_job_fields(self):
         from app.services.jobicy_service import JobicyService

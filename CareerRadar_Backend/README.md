@@ -246,6 +246,10 @@ python3 -m venv .venv
 .venv/bin/python run.py
 ```
 
+The local development server keeps Flask's interactive debugger disabled by
+default. Set `FLASK_DEBUG=true` only when debugging locally; do not enable it
+for a publicly reachable server.
+
 This repository already includes the `migrations/` directory, so do not run
 `flask db init` again. Use `flask --app migration_app db upgrade` to apply the
 checked-in migrations to your database. Run this upgrade after every code

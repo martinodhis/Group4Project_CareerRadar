@@ -12,6 +12,7 @@ const emptyProfile = {
     years_of_experience: 0,
     bio: "",
 };
+const CAREER_LEVELS = ["Entry Level", "Junior", "Mid-Level", "Senior", "Executive"];
 
 function Profile() {
     const [profile, setProfile] = useState(emptyProfile);
@@ -128,14 +129,23 @@ function Profile() {
                                 <div className="admin-section-heading"><div><p className="eyebrow">Career details</p><h2>Professional profile</h2></div></div>
                                 <div className="profile-fields">
                                     <label>Display name<input name="full_name" value={profile.full_name} onChange={updateProfileField} maxLength="240" /></label>
-                                    <label>Headline<input name="headline" value={profile.headline} onChange={updateProfileField} /></label>
-                                    <label>Current job title<input name="current_job_title" value={profile.current_job_title} onChange={updateProfileField} /></label>
-                                    <label>Career level<input name="career_level" value={profile.career_level} onChange={updateProfileField} /></label>
-                                    <label>Location<input name="location" value={profile.location} onChange={updateProfileField} /></label>
-                                    <label>Years of experience<input name="years_of_experience" type="number" min="0" step="0.5" value={profile.years_of_experience} onChange={updateProfileField} /></label>
+                                    <label><span>Headline <span className="required-indicator">Required</span></span><input name="headline" value={profile.headline} onChange={updateProfileField} placeholder="e.g. Software Developer | React & Python" required maxLength="240" /></label>
+                                    <label><span>Current job title <span className="required-indicator">Required</span></span><input name="current_job_title" value={profile.current_job_title} onChange={updateProfileField} required maxLength="160" /></label>
+                                    <label><span>Career level <span className="required-indicator">Required</span></span>
+                                        <select name="career_level" value={profile.career_level} onChange={updateProfileField} required>
+                                            <option value="">Select a career level</option>
+                                            {profile.career_level && !CAREER_LEVELS.includes(profile.career_level) && <option value={profile.career_level}>{profile.career_level}</option>}
+                                            {CAREER_LEVELS.map((level) => <option key={level} value={level}>{level}</option>)}
+                                        </select>
+                                    </label>
+                                    <label><span>Location <span className="required-indicator">Required</span></span><input name="location" value={profile.location} onChange={updateProfileField} required maxLength="160" /></label>
+                                    <label>Years of experience<input name="years_of_experience" type="number" min="0" step="0.5" inputMode="decimal" value={profile.years_of_experience} onChange={updateProfileField} /></label>
                                     <label className="profile-bio">About you<textarea name="bio" rows="5" value={profile.bio} onChange={updateProfileField} /></label>
                                 </div>
-                                <p className="profile-completion">Profile completion: {profile.profile_completion || 0}%</p>
+                                <p className="profile-completion" role="progressbar" aria-label="Profile completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow={profile.profile_completion ?? 0}>
+                                    Profile completion: <strong>{profile.profile_completion ?? 0}%</strong>
+                                </p>
+                                <p className="profile-completion-help">Completion also requires at least 3 skills, education, work experience, and a career goal. The percentage refreshes after saving these details or changing any of those sections.</p>
                                 <button className="btn" type="submit" disabled={savingProfile}>{savingProfile ? "Saving…" : "Save career profile"}</button>
                             </section>
                         </form>

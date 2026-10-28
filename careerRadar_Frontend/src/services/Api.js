@@ -4,6 +4,7 @@ export const API_BASE_URL = (
   configuredApiBaseUrl || (import.meta.env.PROD ? '' : `http://${defaultApiHost}:5000`)
 ).replace(/\/+$/, '');
 export const ACCESS_TOKEN_KEY = 'careerradar:access-token';
+export const REFRESH_TOKEN_KEY = 'careerradar:refresh-token';
 export const SESSION_EXPIRED_MESSAGE = 'Your session has expired. Refresh the page to continue.';
 export const TOKEN_NOT_YET_VALID_MESSAGE = 'Refresh the page to see the available jobs.';
 
@@ -16,7 +17,7 @@ export class ApiError extends Error {
   }
 }
 
-export async function apiRequest(path, { method = 'GET', body, signal, requireAuth = false } = {}) {
+async function fetchApiResponse(path, { method, body, signal, token }) {
   if (!API_BASE_URL) {
     throw new ApiError(
       'CareerRadar API is not configured for this deployment. Set VITE_API_BASE_URL in Netlify to your deployed backend HTTPS URL, then redeploy.',
@@ -26,10 +27,6 @@ export async function apiRequest(path, { method = 'GET', body, signal, requireAu
   }
 
   const headers = {};
-  const token = localStorage.getItem(ACCESS_TOKEN_KEY);
-  if (requireAuth && !token) {
-    throw new ApiError('Your session has expired. Please sign in again.', 401, 'AUTH_REQUIRED');
-  }
   if (token) headers.Authorization = `Bearer ${token}`;
   if (body !== undefined) headers['Content-Type'] = 'application/json';
 
@@ -67,6 +64,60 @@ export async function apiRequest(path, { method = 'GET', body, signal, requireAu
       response.status,
     );
   }
+  return { response, payload };
+}
+
+function isExpiredAccessToken(response, payload) {
+  const message = payload.error?.message || payload.message || payload.msg || '';
+  return response.status === 401 && /token.*expired|expired.*token/i.test(message);
+}
+
+async function refreshAccessToken() {
+  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+  if (!refreshToken) return null;
+
+  const { response, payload } = await fetchApiResponse('/refresh', {
+    method: 'POST',
+    body: {},
+    token: refreshToken,
+  });
+  if (!response.ok || payload.success === false || !payload.data?.access_token) {
+    localStorage.removeItem(ACCESS_TOKEN_KEY);
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
+    return null;
+  }
+
+  localStorage.setItem(ACCESS_TOKEN_KEY, payload.data.access_token);
+  return payload.data.access_token;
+}
+
+export async function apiRequest(path, { method = 'GET', body, signal, requireAuth = false } = {}) {
+  const token = localStorage.getItem(ACCESS_TOKEN_KEY);
+  if (requireAuth && !token) {
+    throw new ApiError('Your session has expired. Please sign in again.', 401, 'AUTH_REQUIRED');
+  }
+
+  let { response, payload } = await fetchApiResponse(path, {
+    method,
+    body,
+    signal,
+    token,
+  });
+
+  if (isExpiredAccessToken(response, payload) && path !== '/refresh') {
+    const refreshedToken = await refreshAccessToken();
+    if (refreshedToken) {
+      ({ response, payload } = await fetchApiResponse(path, {
+        method,
+        body,
+        signal,
+        token: refreshedToken,
+      }));
+    } else {
+      localStorage.removeItem(ACCESS_TOKEN_KEY);
+    }
+  }
+
   if (!response.ok || payload.success === false) {
     const message = payload.error?.message || payload.message || payload.msg || `Request failed (${response.status})`;
     if ((response.status === 401 || response.status === 422) && /token.*not yet valid|not yet valid.*token|\biat\b/i.test(message)) {
@@ -74,7 +125,12 @@ export async function apiRequest(path, { method = 'GET', body, signal, requireAu
     }
     if ((response.status === 401 || response.status === 422) && /token.*expired|expired.*token/i.test(message)) {
       localStorage.removeItem(ACCESS_TOKEN_KEY);
+      localStorage.removeItem(REFRESH_TOKEN_KEY);
       throw new ApiError(SESSION_EXPIRED_MESSAGE, response.status, 'TOKEN_EXPIRED');
+    }
+    if (response.status === 401) {
+      localStorage.removeItem(ACCESS_TOKEN_KEY);
+      localStorage.removeItem(REFRESH_TOKEN_KEY);
     }
     throw new ApiError(message, response.status, payload.error?.code || null);
   }

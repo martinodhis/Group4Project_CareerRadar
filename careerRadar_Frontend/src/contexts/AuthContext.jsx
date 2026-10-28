@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ACCESS_TOKEN_KEY, apiGet, apiPost } from '../services/Api';
+import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, apiGet, apiPost } from '../services/Api';
 import AuthContext from './authContext';
 
 export function AuthProvider({ children }) {
@@ -19,9 +19,10 @@ export function AuthProvider({ children }) {
         }
       })
       .catch((error) => {
-        const invalidToken = error.status === 401 || error.status === 422;
+        const invalidToken = error.code === 'TOKEN_EXPIRED' || error.status === 401;
         if (invalidToken) {
           localStorage.removeItem(ACCESS_TOKEN_KEY);
+          localStorage.removeItem(REFRESH_TOKEN_KEY);
         }
         if (active) {
           setUser(null);
@@ -44,6 +45,7 @@ export function AuthProvider({ children }) {
     async login(email, password) {
       const response = await apiPost('/login', { email, password });
       localStorage.setItem(ACCESS_TOKEN_KEY, response.data.access_token);
+      localStorage.setItem(REFRESH_TOKEN_KEY, response.data.refresh_token);
       setUser(response.data.user);
       setSessionError('');
       return response.data.user;
@@ -51,6 +53,7 @@ export function AuthProvider({ children }) {
     async googleLogin(credential) {
       const response = await apiPost('/google-login', { credential });
       localStorage.setItem(ACCESS_TOKEN_KEY, response.data.access_token);
+      localStorage.setItem(REFRESH_TOKEN_KEY, response.data.refresh_token);
       setUser(response.data.user);
       setSessionError('');
       return response.data.user;
@@ -63,6 +66,7 @@ export function AuthProvider({ children }) {
         if (localStorage.getItem(ACCESS_TOKEN_KEY)) await apiPost('/logout', {});
       } finally {
         localStorage.removeItem(ACCESS_TOKEN_KEY);
+        localStorage.removeItem(REFRESH_TOKEN_KEY);
         setUser(null);
       }
     },

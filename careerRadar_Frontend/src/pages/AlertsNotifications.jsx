@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import EmptyState from "../components/EmptyState";
 import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
-import { apiDelete, apiGet, apiPatch, apiPost } from "../services/Api";
+import { apiDelete, apiGet, apiPatch, apiPost, apiRequest } from "../services/Api";
 
 function AlertsNotifications() {
     const navigate = useNavigate();
@@ -13,6 +13,8 @@ function AlertsNotifications() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
+    const [message, setMessage] = useState("");
+    const [updatingAlertId, setUpdatingAlertId] = useState(null);
 
     const handleRequestError = useCallback((requestError) => {
         if (requestError.status === 401) {
@@ -65,6 +67,7 @@ function AlertsNotifications() {
         event.preventDefault();
         setSaving(true);
         setError("");
+        setMessage("");
         try {
             await apiPost("/alerts", {
                 keyword: form.keyword.trim(),
@@ -72,6 +75,7 @@ function AlertsNotifications() {
                 job_type: form.job_type.trim() || null,
             }, { requireAuth: true });
             setForm({ keyword: "", location: "", job_type: "" });
+            setMessage("Job alert created. Matching new jobs will appear in Notifications after the next job sync.");
             await loadData();
         } catch (requestError) {
             handleRequestError(requestError);
@@ -82,11 +86,34 @@ function AlertsNotifications() {
 
     const deleteAlert = async (alertId) => {
         setError("");
+        setMessage("");
         try {
             await apiDelete(`/alerts/${alertId}`, { requireAuth: true });
             setAlerts((current) => current.filter((alert) => alert.id !== alertId));
+            setMessage("Job alert deleted.");
         } catch (requestError) {
             handleRequestError(requestError);
+        }
+    };
+
+    const toggleAlert = async (alert) => {
+        setError("");
+        setMessage("");
+        setUpdatingAlertId(alert.id);
+        try {
+            const response = await apiRequest(`/alerts/${alert.id}`, {
+                method: "PUT",
+                body: { is_active: !alert.is_active },
+                requireAuth: true,
+            });
+            setAlerts((current) => current.map((item) =>
+                item.id === alert.id ? response.data : item
+            ));
+            setMessage(response.data.is_active ? "Job alert resumed." : "Job alert paused.");
+        } catch (requestError) {
+            handleRequestError(requestError);
+        } finally {
+            setUpdatingAlertId(null);
         }
     };
 
@@ -119,9 +146,10 @@ function AlertsNotifications() {
                 <section className="dashboard-heading">
                     <p className="eyebrow">Stay up to date</p>
                     <h1>Job alerts &amp; notifications</h1>
-                    <p>Create a saved search to receive an in-app notification when a matching listing is added.</p>
+                    <p>Active alerts create in-app notifications when matching jobs are found during a job sync. Manage alerts here; notifications are shown below.</p>
                 </section>
                 {error && <p className="inline-error" role="alert">{error}</p>}
+                {message && <p className="inline-success" role="status">{message}</p>}
                 <section className="admin-section">
                     <div className="admin-section-heading"><div><p className="eyebrow">Saved searches</p><h2>Create a job alert</h2></div></div>
                     <form className="alert-form" onSubmit={createAlert}>
@@ -134,8 +162,17 @@ function AlertsNotifications() {
                         <ul className="alert-list">
                             {alerts.map((alert) => (
                                 <li key={alert.id}>
-                                    <span><strong>{alert.keyword}</strong>{[alert.location, alert.job_type].filter(Boolean).map((item) => <small key={item}>{item}</small>)}</span>
-                                    <button className="btn btn-ghost" type="button" onClick={() => deleteAlert(alert.id)}>Delete</button>
+                                    <span>
+                                        <strong>{alert.keyword}</strong>
+                                        {[alert.location, alert.job_type].filter(Boolean).map((item) => <small key={item}>{item}</small>)}
+                                        <small>{alert.is_active ? "Active" : "Paused"}</small>
+                                    </span>
+                                    <div className="alert-actions">
+                                        <button className="btn btn-ghost" type="button" onClick={() => toggleAlert(alert)} disabled={updatingAlertId !== null}>
+                                            {updatingAlertId === alert.id ? "Saving…" : alert.is_active ? "Pause" : "Resume"}
+                                        </button>
+                                        <button className="btn btn-ghost" type="button" onClick={() => deleteAlert(alert.id)} disabled={updatingAlertId !== null}>Delete</button>
+                                    </div>
                                 </li>
                             ))}
                         </ul>

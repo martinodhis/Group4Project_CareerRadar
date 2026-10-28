@@ -7,6 +7,7 @@ from ..models.education import Education
 from ..models.experience import Experience
 from ..models.profile import Profile
 from ..models.skill import Skill, UserSkill
+from ..services.profile_service import refresh_profile_completion
 from ..schemas import (
     EducationSchema,
     ExperienceSchema,
@@ -27,31 +28,13 @@ def _ensure_profile(user):
     return user.profile
 
 
-def _compute_completion(user):
-    """Rough profile-completion percentage used by the dashboard."""
-    profile = user.profile
-    checks = [
-        bool(profile and profile.headline),
-        bool(profile and profile.current_job_title),
-        bool(profile and profile.location),
-        bool(profile and profile.career_level),
-        len(user.skills) >= 3,
-        len(user.education) >= 1,
-        len(user.experience) >= 1,
-        len(user.career_goals) >= 1,
-    ]
-    return int(sum(checks) / len(checks) * 100)
-
-
 @profile_bp.get("")
 @jwt_required()
 def get_profile():
     user = get_current_user()
     profile = _ensure_profile(user)
 
-    completion = _compute_completion(user)
-    if profile.profile_completion != completion:
-        profile.profile_completion = completion
+    refresh_profile_completion(user)
     db.session.commit()
 
     data = profile.to_dict()
@@ -73,7 +56,7 @@ def update_profile():
     for key, value in payload.items():
         setattr(profile, key, value)
 
-    profile.profile_completion = _compute_completion(user)
+    refresh_profile_completion(user)
     db.session.commit()
     return success(data=profile.to_dict(), message="Profile updated successfully")
 
@@ -83,7 +66,7 @@ def update_profile():
 @jwt_required()
 def add_skill():
     user = get_current_user()
-    profile = _ensure_profile(user)
+    _ensure_profile(user)
     payload = UserSkillSchema().load(request.get_json(silent=True) or {})
 
     skill = None
@@ -112,7 +95,7 @@ def add_skill():
         is_primary=bool(payload.get("is_primary")),
     )
     db.session.add(user_skill)
-    profile.profile_completion = _compute_completion(user)
+    refresh_profile_completion(user)
     db.session.commit()
     return success(data=user_skill.to_dict(), message="Skill added", status_code=201)
 
@@ -124,9 +107,9 @@ def remove_skill(skill_id):
     user_skill = UserSkill.query.filter_by(user_id=user.id, skill_id=skill_id).first()
     if user_skill is None:
         raise NotFoundError("This skill is not on your profile.", code="SKILL_NOT_FOUND")
-    profile = _ensure_profile(user)
+    _ensure_profile(user)
     db.session.delete(user_skill)
-    profile.profile_completion = _compute_completion(user)
+    refresh_profile_completion(user)
     db.session.commit()
     return success(message="Skill removed")
 
@@ -136,11 +119,11 @@ def remove_skill(skill_id):
 @jwt_required()
 def add_education():
     user = get_current_user()
-    profile = _ensure_profile(user)
+    _ensure_profile(user)
     payload = EducationSchema().load(request.get_json(silent=True) or {})
     edu = Education(user_id=user.id, **payload)
     db.session.add(edu)
-    profile.profile_completion = _compute_completion(user)
+    refresh_profile_completion(user)
     db.session.commit()
     return success(data=edu.to_dict(), message="Education added", status_code=201)
 
@@ -152,7 +135,9 @@ def delete_education(education_id):
     edu = Education.query.filter_by(id=education_id, user_id=user.id).first()
     if edu is None:
         raise NotFoundError("Education record not found.", code="EDUCATION_NOT_FOUND")
+    _ensure_profile(user)
     db.session.delete(edu)
+    refresh_profile_completion(user)
     db.session.commit()
     return success(message="Education removed")
 
@@ -162,11 +147,11 @@ def delete_education(education_id):
 @jwt_required()
 def add_experience():
     user = get_current_user()
-    profile = _ensure_profile(user)
+    _ensure_profile(user)
     payload = ExperienceSchema().load(request.get_json(silent=True) or {})
     exp = Experience(user_id=user.id, **payload)
     db.session.add(exp)
-    profile.profile_completion = _compute_completion(user)
+    refresh_profile_completion(user)
     db.session.commit()
     return success(data=exp.to_dict(), message="Experience added", status_code=201)
 
@@ -178,6 +163,8 @@ def delete_experience(experience_id):
     exp = Experience.query.filter_by(id=experience_id, user_id=user.id).first()
     if exp is None:
         raise NotFoundError("Experience record not found.", code="EXPERIENCE_NOT_FOUND")
+    _ensure_profile(user)
     db.session.delete(exp)
+    refresh_profile_completion(user)
     db.session.commit()
     return success(message="Experience removed")

@@ -1,6 +1,8 @@
 """Job routes: browse, search, filter, sync (admin), status and match."""
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+import time
+from threading import Lock
 
 import requests
 from flask import Blueprint, current_app, request
@@ -15,6 +17,7 @@ from ..models.saved_job import SavedJob
 from ..models.skill import JobSkill
 from ..schemas import JobQuerySchema
 from ..services.jobicy_service import jobicy_service
+from ..services.notification_service import notify_matching_alerts
 from ..services.activity_service import record_activity
 from ..services.matching_service import score_job
 from ..utils.decorators import admin_required, get_current_user
@@ -22,6 +25,9 @@ from ..utils.errors import ApiError, ConflictError, NotFoundError, ValidationErr
 from ..utils.responses import success
 
 jobs_bp = Blueprint("jobs", __name__)
+_automatic_sync_retry_after = 0.0
+_automatic_sync_lock = Lock()
+_AUTOMATIC_SYNC_RETRY_SECONDS = 300
 
 
 def _apply_filters(query, params):
@@ -77,31 +83,43 @@ def _paginate(query, page, limit):
 
 
 def _sync_public_jobs_if_needed(query, keyword=None):
-    active_jobs = Job.query.filter_by(is_active=True).count()
-    latest_sync = db.session.query(db.func.max(Job.last_synced_at)).filter_by(
-        source="jobicy"
-    ).scalar()
-    if latest_sync is not None and latest_sync.tzinfo is None:
-        latest_sync = latest_sync.replace(tzinfo=timezone.utc)
+    global _automatic_sync_retry_after
 
-    stale = (
-        latest_sync is None
-        or latest_sync < datetime.now(timezone.utc) - timedelta(minutes=15)
-    )
-    missing_search_results = bool(keyword and not query.first())
-    if not stale and not missing_search_results:
+    if not _automatic_sync_lock.acquire(blocking=False):
         return
 
     try:
-        jobicy_service.sync(count=50, tag=keyword if missing_search_results else None)
-    except (requests.RequestException, ValueError):
-        current_app.logger.exception("Automatic Jobicy synchronization failed")
-        if active_jobs == 0 or missing_search_results:
-            raise ApiError(
-                "JOB_SYNC_FAILED",
-                "Job listings could not be loaded from Jobicy. Please try again later.",
-                502,
+        if time.monotonic() < _automatic_sync_retry_after:
+            return
+
+        latest_sync = db.session.query(db.func.max(Job.last_synced_at)).filter_by(
+            source="jobicy"
+        ).scalar()
+        if latest_sync is not None and latest_sync.tzinfo is None:
+            latest_sync = latest_sync.replace(tzinfo=timezone.utc)
+
+        stale = (
+            latest_sync is None
+            or latest_sync < datetime.now(timezone.utc) - timedelta(minutes=15)
+        )
+        missing_search_results = bool(keyword and not query.first())
+        if not stale and not missing_search_results:
+            return
+
+        try:
+            jobicy_service.sync(count=50, tag=keyword if missing_search_results else None)
+        except (requests.RequestException, ValueError) as error:
+            _automatic_sync_retry_after = time.monotonic() + _AUTOMATIC_SYNC_RETRY_SECONDS
+            current_app.logger.warning(
+                "Automatic Jobicy synchronization failed; serving cached jobs and "
+                "retrying in %s seconds: %s",
+                _AUTOMATIC_SYNC_RETRY_SECONDS,
+                error,
             )
+        else:
+            _automatic_sync_retry_after = 0.0
+    finally:
+        _automatic_sync_lock.release()
 
 
 @jobs_bp.get("")
@@ -295,6 +313,7 @@ def create_job():
     )
     db.session.add(job)
     db.session.commit()
+    notify_matching_alerts(job)
     return success(data=job.to_dict(), message="Job created", status_code=201)
 
 
@@ -305,6 +324,7 @@ def update_job(job_id):
     job = db.session.get(Job, job_id)
     if job is None:
         raise NotFoundError("The requested job could not be found.", code="JOB_NOT_FOUND")
+    was_active = job.is_active
 
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
@@ -348,6 +368,8 @@ def update_job(job_id):
     except IntegrityError:
         db.session.rollback()
         raise ConflictError("The job conflicts with an existing listing.", code="JOB_EXISTS")
+    if not was_active and job.is_active:
+        notify_matching_alerts(job)
     return success(data=job.to_dict(), message="Job updated")
 
 

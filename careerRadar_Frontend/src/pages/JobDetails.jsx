@@ -45,7 +45,7 @@ function JobDetails() {
                 status: "APPLIED",
                 applied_at: new Date().toISOString(),
             });
-            setApplicationMessage("Application recorded successfully. Please wait for the company to respond.");
+            setApplicationMessage("Application recorded in your tracker. CareerRadar does not submit applications to employers.");
             setApplicationTracked(true);
         } catch (requestError) {
             setApplicationError(requestError.message);

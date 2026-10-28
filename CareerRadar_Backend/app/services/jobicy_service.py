@@ -37,7 +37,7 @@ class JobicyService:
         if industry:
             params["industry"] = industry
 
-        response = requests.get(self.endpoint, params=params, timeout=20)
+        response = requests.get(self.endpoint, params=params, timeout=(3, 10))
         response.raise_for_status()
         payload = response.json()
         external_jobs = payload.get("jobs")
@@ -46,7 +46,7 @@ class JobicyService:
 
         created = 0
         updated = 0
-        newly_created_jobs = []
+        newly_available_jobs = []
         for external in external_jobs:
             if not isinstance(external, dict):
                 continue
@@ -57,9 +57,9 @@ class JobicyService:
 
             job = Job.query.filter_by(source="jobicy", external_id=str(external_id)).first()
             is_new = job is None
+            was_active = bool(job and job.is_active)
             if is_new:
                 job = Job(source="jobicy", external_id=str(external_id), title=title)
-                newly_created_jobs.append(job)
 
             published_value = external.get("pubDate") or external.get("publishedAt")
             published_at = None
@@ -96,13 +96,15 @@ class JobicyService:
             job.last_synced_at = datetime.now(timezone.utc)
             job.is_active = True
             db.session.add(job)
+            if is_new or not was_active:
+                newly_available_jobs.append(job)
             if is_new:
                 created += 1
             else:
                 updated += 1
 
         db.session.commit()
-        for job in newly_created_jobs:
+        for job in newly_available_jobs:
             notify_matching_alerts(job)
         return {
             "fetched": len(external_jobs),

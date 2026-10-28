@@ -6,6 +6,7 @@ from ..extensions import db
 from ..models.career_goal import CareerGoal
 from ..schemas import CareerGoalSchema
 from ..services.career_radar_service import career_radar_service
+from ..services.profile_service import refresh_profile_completion
 from ..utils.decorators import get_current_user
 from ..utils.errors import NotFoundError
 from ..utils.responses import success
@@ -29,6 +30,7 @@ def create_goal():
     payload = CareerGoalSchema().load(request.get_json(silent=True) or {})
     goal = CareerGoal(user_id=user.id, **payload)
     db.session.add(goal)
+    refresh_profile_completion(user)
     db.session.commit()
     return success(data=goal.to_dict(), message="Career goal created", status_code=201)
 
@@ -43,6 +45,7 @@ def update_goal(goal_id):
     payload = CareerGoalSchema(partial=True).load(request.get_json(silent=True) or {})
     for key, value in payload.items():
         setattr(goal, key, value)
+    refresh_profile_completion(user)
     db.session.commit()
     return success(data=goal.to_dict(), message="Career goal updated")
 
@@ -55,6 +58,7 @@ def delete_goal(goal_id):
     if goal is None:
         raise NotFoundError("Career goal not found.", code="GOAL_NOT_FOUND")
     db.session.delete(goal)
+    refresh_profile_completion(user)
     db.session.commit()
     return success(message="Career goal deleted")
 

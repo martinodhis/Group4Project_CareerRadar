@@ -99,6 +99,12 @@ main { width: 100%; }
 .job-date { color: #89948d; font-size: 10px; }
 .job-card-actions { display: flex; align-items: center; gap: 7px; }
 
+.job-search-promo { width: min(1120px, calc(100% - 48px)); min-height: 300px; display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); align-items: center; gap: 28px; margin: 0 auto 72px; padding: 28px 42px; overflow: hidden; border: 1px solid #e4ebdf; border-radius: 20px; background: linear-gradient(120deg, #fff 0%, #f5f8f1 100%); }
+.job-search-promo-copy .eyebrow { color: var(--green-dark); font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.job-search-promo-copy h2 { max-width: 470px; margin-top: 11px; color: var(--ink); font-family: 'Manrope', sans-serif; font-size: clamp(24px, 3vw, 36px); font-weight: 700; line-height: 1.2; letter-spacing: -.045em; }
+.job-search-promo-copy > p:last-child { max-width: 430px; margin-top: 13px; color: var(--muted); font-size: 13px; line-height: 1.8; }
+.job-search-promo-image { display: block; width: 100%; max-height: 300px; object-fit: contain; }
+
 .search-btn, .btn, .job-application a { min-height: 40px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 0 15px; border: 1px solid transparent; border-radius: 8px; color: #243328; background: var(--green); font-size: 12px; font-weight: 700; line-height: 1.2; text-align: center; cursor: pointer; transition: background .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease; }
 .search-btn:hover, .btn:hover, .job-application a:hover { border-color: #a9c97d; background: #c7e39f; box-shadow: 0 4px 12px rgba(47, 81, 42, .11); transform: translateY(-1px); }
 .search-btn:active, .btn:active, .job-application a:active { box-shadow: none; transform: translateY(0); }
@@ -165,6 +171,7 @@ main { width: 100%; }
 
 @media (max-width: 820px) {
   .job-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .job-search-promo { grid-template-columns: 1fr 1fr; gap: 18px; padding: 25px; }
   .job-results { grid-template-columns: 1fr; gap: 20px; }
   .filters.card { position: static; }
   .filters-row { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; }
@@ -185,6 +192,8 @@ main { width: 100%; }
   .search-btn { min-height: 40px; padding-inline: 12px; font-size: 11px; }
   .recent-jobs, .section-wrap { padding-block: 48px 56px; }
   .job-list { grid-template-columns: 1fr; gap: 11px; }
+  .job-search-promo { grid-template-columns: 1fr; gap: 8px; margin-bottom: 48px; padding: 23px 20px 14px; }
+  .job-search-promo-image { max-height: 230px; }
   .job-card { padding: 18px; }
   .job-card-actions .btn { min-height: 33px; padding-inline: 10px; }
   .discovery-inner { flex-wrap: wrap; gap: 12px; }
@@ -300,10 +309,14 @@ main { width: 100%; }
 .profile-form .admin-section { margin-top: 0; }
 .profile-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15px; margin-bottom: 18px; }
 .profile-fields label, .alert-form label { display: grid; gap: 7px; color: #56655b; font-size: 12px; font-weight: 700; }
-.profile-fields input, .profile-fields textarea, .alert-form input { width: 100%; min-height: 42px; padding: 9px 11px; border: 1px solid #dce4d8; border-radius: 7px; color: var(--ink); background: #fff; font-size: 13px; }
+.profile-fields input, .profile-fields select, .profile-fields textarea, .alert-form input { width: 100%; min-height: 42px; padding: 9px 11px; border: 1px solid #dce4d8; border-radius: 7px; color: var(--ink); background: #fff; font-size: 13px; }
 .profile-fields textarea { resize: vertical; }
 .profile-bio { grid-column: 1 / -1; }
 .profile-completion { margin: 0 0 15px; color: var(--muted); font-size: 12px; }
+.profile-completion-help { margin: -8px 0 15px; color: var(--muted); font-size: 11px; line-height: 1.6; }
+.required-indicator { color: #9a3d32; font-size: 10px; font-weight: 600; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.alert-actions { display: flex; gap: 8px; }
 .profile-actions { display: flex; justify-content: flex-end; margin-top: 18px; }
 .alert-form { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; align-items: end; gap: 12px; margin-bottom: 18px; padding: 18px; border: 1px solid var(--line); border-radius: 11px; background: #fff; }
 .alert-list, .notification-list { display: grid; gap: 9px; padding: 0; list-style: none; }
